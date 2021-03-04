@@ -1,23 +1,65 @@
+/*
+ * Copyright 2021 The Android Open Source Project
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.example.androiddevchallenge
 
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.material.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.Icon
+import androidx.compose.material.IconButton
+import androidx.compose.material.MaterialTheme
+import androidx.compose.material.Surface
+import androidx.compose.material.Text
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Backspace
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.ripple.rememberRipple
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.buildAnnotatedString
@@ -26,8 +68,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.androiddevchallenge.ui.theme.CountdownTheme
-import java.lang.StringBuilder
-import java.util.*
+import java.util.Timer
 import kotlin.concurrent.scheduleAtFixedRate
 import kotlin.math.abs
 
@@ -40,18 +81,24 @@ fun CountdownApp() {
         when (immutableState) {
             is SettingsState -> {
                 AppearanceAnimation {
-                    CountdownSettings(immutableState, onStartClicked = {
-                        appState = CountdownState(false, 0, immutableState.asSeconds())
-                    }, onDigitPressed = {
-                        appState = immutableState.tryPushDigit(it)
-                    }, onDigitRemove = {
-                        appState = immutableState.tryPopDigit()
-                    })
+                    CountdownSettings(
+                        immutableState,
+                        onStartClicked = {
+                            appState = CountdownState(false, 0, immutableState.asSeconds())
+                        },
+                        onDigitPressed = {
+                            appState = immutableState.tryPushDigit(it)
+                        },
+                        onDigitRemove = {
+                            appState = immutableState.tryPopDigit()
+                        }
+                    )
                 }
             }
             is CountdownState -> {
                 AppearanceAnimation {
-                    CountdownClock(immutableState,
+                    CountdownClock(
+                        immutableState,
                         onPauseClicked = {
                             appState = immutableState.pause()
                         },
@@ -60,9 +107,11 @@ fun CountdownApp() {
                         },
                         onStopClicked = {
                             appState = SettingsState("")
-                        }, onTicked = {
+                        },
+                        onTicked = {
                             appState = immutableState.tick()
-                        })
+                        }
+                    )
                 }
             }
         }
@@ -95,20 +144,22 @@ fun CountdownSettings(
     onDigitPressed: (Char) -> Unit,
     onDigitRemove: () -> Unit,
 ) {
-    SharedLayout(panel = {
-        ControlPanel(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-        ) {
-            IconedButton(
-                caption = stringResource(id = R.string.start),
-                icon = Icons.Default.PlayArrow,
-                onClick = onStartClicked,
-                enabled = state.isNonZero,
-            )
+    SharedLayout(
+        panel = {
+            ControlPanel(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+            ) {
+                IconedButton(
+                    caption = stringResource(id = R.string.start),
+                    icon = Icons.Default.PlayArrow,
+                    onClick = onStartClicked,
+                    enabled = state.isNonZero,
+                )
+            }
         }
-    }) {
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -229,22 +280,24 @@ fun CountdownClock(
     onStopClicked: () -> Unit,
     onTicked: () -> Unit
 ) {
-    SharedLayout(panel = {
-        ControlPanel {
-            IconedButton(
-                caption = if (countdownState.paused) stringResource(id = R.string.start) else stringResource(
-                    id = R.string.pause
-                ),
-                icon = if (countdownState.paused) Icons.Default.PlayArrow else Icons.Default.Pause,
-                onClick = if (countdownState.paused) onResumeClicked else onPauseClicked
-            )
-            IconedButton(
-                caption = stringResource(id = R.string.stop),
-                icon = Icons.Default.Stop,
-                onClick = onStopClicked
-            )
+    SharedLayout(
+        panel = {
+            ControlPanel {
+                IconedButton(
+                    caption = if (countdownState.paused) stringResource(id = R.string.start) else stringResource(
+                        id = R.string.pause
+                    ),
+                    icon = if (countdownState.paused) Icons.Default.PlayArrow else Icons.Default.Pause,
+                    onClick = if (countdownState.paused) onResumeClicked else onPauseClicked
+                )
+                IconedButton(
+                    caption = stringResource(id = R.string.stop),
+                    icon = Icons.Default.Stop,
+                    onClick = onStopClicked
+                )
+            }
         }
-    }) {
+    ) {
 
         Box(
             Modifier
@@ -363,20 +416,22 @@ fun PausedTimerLayout(
     onResumeClicked: () -> Unit,
     onStopClicked: () -> Unit
 ) {
-    SharedLayout(panel = {
-        ControlPanel {
-            IconedButton(
-                caption = stringResource(id = R.string.resume),
-                icon = Icons.Default.PlayArrow,
-                onClick = onResumeClicked
-            )
-            IconedButton(
-                caption = stringResource(id = R.string.stop),
-                icon = Icons.Default.Stop,
-                onClick = onStopClicked
-            )
+    SharedLayout(
+        panel = {
+            ControlPanel {
+                IconedButton(
+                    caption = stringResource(id = R.string.resume),
+                    icon = Icons.Default.PlayArrow,
+                    onClick = onResumeClicked
+                )
+                IconedButton(
+                    caption = stringResource(id = R.string.stop),
+                    icon = Icons.Default.Stop,
+                    onClick = onStopClicked
+                )
+            }
         }
-    }) {
+    ) {
         // TODO: timer
     }
 }
